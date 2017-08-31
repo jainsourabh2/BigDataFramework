@@ -12,8 +12,10 @@ app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 app.use(morgan('dev'));
 
-var api = require('./app/routes/mysqlconnect')(app, express);
-app.use('/api', api);
+var mysqlapi = require('./app/routes/mysqlconnect')(app, express);
+var mssqlapi = require('./app/routes/mssqlconnect')(app, express);
+app.use('/mysqlapi', mysqlapi);
+app.use('/mssqlapi', mssqlapi);
 
 
 app.listen(config.port, function (err) {

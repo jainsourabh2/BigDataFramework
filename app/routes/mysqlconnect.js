@@ -38,8 +38,17 @@ module.exports = function (app, express) {
 				let sjd = exec(sqoop_job_create, function (error, stdout, stderr) {
 					if(error !== null){
 						console.log("error occured : " + error);
+						res.json({"message":"Error occured on sqoop job creation","statusCode":"201"});
 					} else {
-						res.json({"message":"Sqoop Job created successfully","statusCode":"200"});
+						let hdfs_path_create = "hadoop dfs -mkdir "+hdfsPath+"/"+sqoopJobName;
+						let hpc = exec(hdfs_path_create, function (error, stdout, stderr) {
+							if(error !== null){
+								console.log("error occured : " + error);
+								res.json({"message":"Hadoop Directory already exists.","statusCode":"200"});
+							} else {
+								res.json({"message":"Hadoop Directory Successfully Created","statusCode":"200"});
+							}
+						});
 					}
 				});
 			}
