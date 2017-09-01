@@ -4,6 +4,8 @@
 
 const mysql = require('mysql');
 const exec = require('child_process').exec;
+const config = require('../../config.js');
+const fs = require('fs');
 
 module.exports = function (app, express) {
     var api = express.Router();
@@ -25,28 +27,41 @@ module.exports = function (app, express) {
 		}
 		
 		// Sqoop Job Delete Command Preparation
-		let sqoop_job_delete = "sqoop job --delete "+sqoopJobName;
+		let sqoop_job_delete = "sqoop job --delete "+sqoopJobName+" --meta-connect jdbc:hsqldb:hsql://"+config.sqoopMetaStore+":"+config.sqoopMetaStorePort+"/sqoop";
 		
 		//Sqoop Job Creation Command
-		let sqoop_job_create = "sqoop job --create "+sqoopJobName+" -- import --connect "+connectionString+" --username "+username+" --password "+password+" --table "+dbTable+" --m 1 --target-dir /user/mapr/employee/ --append";
+		let sqoop_job_create = "sqoop job --create "+sqoopJobName+" --meta-connect jdbc:hsqldb:hsql://"+config.sqoopMetaStore+":"+config.sqoopMetaStorePort+"/sqoop -- import --connect "+connectionString+" --username "+username+" --password "+password+" --table "+dbTable+" --m 1 --target-dir /user/mapr/employee/ --append";
 
 		let sjd = exec(sqoop_job_delete, function (error, stdout, stderr) {
 			if(error !== null){
 				console.log("error occured : " + error);
 			} else {
 				console.log("Sqoop Job Deleted successfully");
-				let sjd = exec(sqoop_job_create, function (error, stdout, stderr) {
+				let sjc = exec(sqoop_job_create, function (error, stdout, stderr) {
 					if(error !== null){
 						console.log("error occured : " + error);
 						res.json({"message":"Error occured on sqoop job creation","statusCode":"201"});
 					} else {
 						let hdfs_path_create = "hadoop dfs -mkdir "+hdfsPath+"/"+sqoopJobName;
 						let hpc = exec(hdfs_path_create, function (error, stdout, stderr) {
-							if(error !== null){
-								console.log("error occured : " + error);
-								res.json({"message":"Hadoop Directory already exists.","statusCode":"200"});
+							if(error === null){
+								if(config.distribution.toLowerCase() === "mapr"){
+									console.log("maprfs://"+config.nameNodeHost+":"+config.nameNodePort);
+								};
+								let dir = "/home/mapr/bigdataframework/jobs/"+sqoopJobName;
+								if (!fs.existsSync(dir)){
+    									fs.mkdirSync(dir);
+								}
+								fs.open(dir+"/job.properties", 'r+', function(err, fd) {
+   									if (err) {
+      										return console.error(err);
+   									}
+  									console.log("File opened successfully!");   
+									res.json({"message":"Hadoop Directory Successfully Created.","statusCode":"200"});  
+								});
 							} else {
-								res.json({"message":"Hadoop Directory Successfully Created","statusCode":"200"});
+								console.log("error occured : " + error);
+								res.json({"message":"Hadoop Directory Already Exists","statusCode":"200"});
 							}
 						});
 					}
@@ -56,8 +71,8 @@ module.exports = function (app, express) {
 	});
 
     api.post('/prerequisitecheck', function (req, res) {
-
-        let hostname = req.body.host;
+        
+	let hostname = req.body.host;
         let port = req.body.port || 3306;
         let username = req.body.username;
         let password = req.body.password;
