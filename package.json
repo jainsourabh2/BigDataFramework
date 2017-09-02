@@ -15,6 +15,7 @@
     "jsonwebtoken": "^7.4.2",
     "morgan": "^1.8.2",
     "mssql": "^4.0.4",
-    "mysql": "^2.14.1"
+    "mysql": "^2.14.1",
+    "xmlbuilder": "^9.0.4"
   }
 }

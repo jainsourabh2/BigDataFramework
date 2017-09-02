@@ -9,5 +9,7 @@ module.exports = {
   "nameNodeHost" : "172.16.243.116",
   "nameNodePort" : 7222,
   "jobTrackerHost" : "172.16.243.116",
-  "jobTrackerPort" : 9001
+  "jobTrackerPort" : 9001,
+  "localBasePath" : "/home/mapr/bigdataframework/jobs/",
+  "hadoopBasePath" : "/user/mapr/bigdataframework/jobs/"
 };

@@ -6,6 +6,34 @@ const mysql = require('mysql');
 const exec = require('child_process').exec;
 const config = require('../../config.js');
 const fs = require('fs');
+const path = require('path');
+const builder = require('xmlbuilder');
+
+function generateWorkFlowXML(sqoopMetaStore,sqoopMetaStorePort,sqoopJobName,dbPassword){
+
+let command = "job --meta-connect jdbc:hsqldb:hsql://"+sqoopMetaStore+":"+sqoopMetaStorePort+"/sqoop --exec "+sqoopJobName+" -- --password "+dbPassword;
+
+let xml = builder.create('workflow-app',{ encoding: 'utf-8' })
+.att('name','Sqoop_Test')
+.att('xmlns', 'uri:oozie:workflow:0.5')
+.ele('start',{'to':'sqoop-9420'}).up()
+.ele('action',{'name':'sqoop-9420'})
+  .ele('sqoop',{'xmlns':'uri:oozie:sqoop-action:0.2'})
+    .ele('job-tracker',{},'${jobTracker}').up()
+    .ele('name-node',{},'${nameNode}').up()
+    .ele('command',{},command).up()
+  .up()
+  .ele('ok',{'to':'End'}).up()
+  .ele('erro',{'to':'kill'}).up()
+.up()
+.ele('kill',{'name':'kill'})
+  .ele('message',{},'Sqoop failed, error message[${wf:errorMessage(wf:lastErrorNode())}]').up()
+.up()
+.ele('end',{'name':'End'})
+.end({ pretty: true});
+
+return xml;
+}
 
 module.exports = function (app, express) {
     var api = express.Router();
@@ -45,19 +73,28 @@ module.exports = function (app, express) {
 						let hdfs_path_create = "hadoop dfs -mkdir "+hdfsPath+"/"+sqoopJobName;
 						let hpc = exec(hdfs_path_create, function (error, stdout, stderr) {
 							if(error === null){
+								let namenode,jobtracker,libpath,coordinatorpath,finalData;
 								if(config.distribution.toLowerCase() === "mapr"){
-									console.log("maprfs://"+config.nameNodeHost+":"+config.nameNodePort);
+									namenode = "nameNode=maprfs://"+config.nameNodeHost+":"+config.nameNodePort+"\n";
+									jobtracker = "jobTracker="+config.jobTrackerHost+":"+config.jobTrackerPort+"\n";
+									libpath = "oozie.use.system.libpath=true"+"\n";
+									coordinatorpath = "oozie.coord.application.path="+config.hadoopBasePath+"/MySQL_test_test/coordinator.xml";
+									finalData = namenode + jobtracker + libpath + coordinatorpath;	
 								};
-								let dir = "/home/mapr/bigdataframework/jobs/"+sqoopJobName;
-								if (!fs.existsSync(dir)){
-    									fs.mkdirSync(dir);
+								let dir = config.localBasePath+sqoopJobName;
+								console.log(dir);
+								if(!fs.existsSync(dir)){
+									console.log("Inside");
+    									fs.mkdirSync(path.resolve(dir));
 								}
-								fs.open(dir+"/job.properties", 'r+', function(err, fd) {
-   									if (err) {
-      										return console.error(err);
-   									}
-  									console.log("File opened successfully!");   
-									res.json({"message":"Hadoop Directory Successfully Created.","statusCode":"200"});  
+								fs.writeFile(dir+"/job.properties", finalData, { flag: 'wx' }, function (err) {
+									if (err) throw err;
+								    	console.log("It's saved!");
+									let xml = generateWorkFlowXML(config.sqoopMetaStore,config.sqoopMetaStorePort,sqoopJobName,password);
+									fs.writeFile(dir+"/workflow.xml", xml, { flag: 'wx' }, function (err) {
+										if (err) throw err;
+										res.json({"message":"Files generate successfully","statusCode":"200"});	
+									});
 								});
 							} else {
 								console.log("error occured : " + error);
