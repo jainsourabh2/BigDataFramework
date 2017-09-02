@@ -16,6 +16,8 @@
     "morgan": "^1.8.2",
     "mssql": "^4.0.4",
     "mysql": "^2.14.1",
+    "winston": "^2.3.1",
+    "winston-daily-rotate-file": "^1.4.6",
     "xmlbuilder": "^9.0.4"
   }
 }
