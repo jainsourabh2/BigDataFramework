@@ -64,7 +64,6 @@ module.exports = function (app, express) {
 								let dir = config.localBasePath+sqoopJobName;
 								
 								if(!fs.existsSync(dir)){
-									console.log("Inside");
     									fs.mkdirSync(path.resolve(dir));
 								}
 
@@ -100,38 +99,73 @@ module.exports = function (app, express) {
         let username = req.body.username;
         let password = req.body.password;
         let database = req.body.database;
+	let dbType = req.body.type;
 
-        let connection = mysql.createConnection({
-            host     : hostname,
-            port     : port,
-            user     : username,
-            password : password,
-            database : database,
-            connectTimeout : 60000
-        });
+	if(dbType.toLowerCase() === config.mySQL){
 
-        connection.connect(function(err) {
-          if (err) {
-            res.json({"message":"Connection Error","code":err.code,"desc":err.sqlMessage,"fatal":err.fatal,"statusCode":"201"})
-            return;
-          }
+		let connection = mysql.createConnection({
+            		host     : hostname,
+            		port     : port,
+            		user     : username,
+            		password : password,
+            		database : database,
+            		connectTimeout : 60000
+        	});
 
-                let child = exec("sqoop version", function (error, stdout, stderr) {
-                        if (error !== config.nullValue) {
-                                console.log('exec error: ' + error);
-                        }else{
-                                console.log(stdout);
-                		connection.end();
-				if(stdout.toString().indexOf("command not found") === -1){
-					res.json({"message":"MySQL Connection Successfull & Sqoop Exists","statusCode":"200"});
-				}else{
-					res.json({"message":"MySQL Connection Successfull but sqoop does not exist","statusCode":"202"})
-				}
-                        }
-                });
-        });
+        	connection.connect(function(err) {
+          		if (err) {
+            			res.json({"message":"Connection Error","code":err.code,"desc":err.sqlMessage,"fatal":err.fatal,"statusCode":"201"})
+            			return;
+          		}
+
+                	let child = exec("sqoop version", function (error, stdout, stderr) {
+                        	if (error !== config.nullValue) {
+                                	console.log('exec error: ' + error);
+                        	}else{
+                                	console.log(stdout);
+                			connection.end();
+					if(stdout.toString().indexOf("command not found") === -1){
+						res.json({"message":"MySQL Connection Successfull & Sqoop Exists","statusCode":"200"});
+					}else{
+						res.json({"message":"MySQL Connection Successfull but sqoop does not exist","statusCode":"202"})
+					}
+                        	}
+                	});
+        	});
+	} else if (dbType.toLowerCase() === config.msSQL){
+
+        	let config = {
+                	user: username,
+                	password: password,
+                	server: hostname,
+                	database: database
+        	};
+
+        	sql.connect(config,function(err) {
+                	sql.close();
+                	if (err) {
+                        	console.log(err);
+                        	res.json({"message":"Connection Error","code":err.code,"desc":err.sqlMessage,"fatal":err.fatal,"statusCode":"201"})
+                        	return;
+                	}
+
+                	let child = exec("sqoop version", function (error, stdout, stderr) {
+                        	if (error !== null) {
+                                	console.log('exec error: ' + error);
+                        	} else {
+                                	console.log(stdout);
+                                	if(stdout.toString().indexOf("command not found") === -1){
+                                        	res.json({"message":"Microsoft SQL Server Connection Successfull & Sqoop Exists","statusCode":"200"});
+                                	}else{
+                                        	res.json({"message":"Microsoft SQL Server Connection Successfull but Sqoop does not exist","statusCode":"202"})
+                                	}
+                        	}
+                	});
+        	});
+	}
 
     });
 
     return api;
+
 };
