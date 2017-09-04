@@ -9,15 +9,16 @@ var common = {};
 
 (function(common){
 
-	common.generateCoordinatorXML = function(hadoopWorkFlowFilePath,sqoopJobName){
+	common.generateCoordinatorXML = function(hadoopWorkFlowFilePath,sqoopJobName,startDateTime,freqInMinutes){
 
-        	let coordinatorPath = hadoopWorkFlowFilePath + sqoopJobName + '/coordniator.xml';
+        	let coordinatorPath = hadoopWorkFlowFilePath + sqoopJobName + '/workflow.xml';
+		let frequency = "*/"+freqInMinutes+" * * * *";
 
         	let xml =  builder.create('coordinator-app',{ encoding: 'utf-8' })
         	.att('name','coordinator1')
-        	.att('frequency','10 * * * *')
-        	.att('start','2017-01-01T02:00Z')
-        	.att('end','2017-12-31T02:00Z')
+        	.att('frequency',frequency)
+        	.att('start',startDateTime)
+        	.att('end','9999-12-31T02:00Z')
         	.att('timezone','GMT+0530')
         	.att('xmlns','uri:oozie:coordinator:0.1')
         	.ele('action')

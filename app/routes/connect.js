@@ -24,6 +24,11 @@ module.exports = function (app, express) {
 		let dbType = req.body.type;
 		let dbTable = req.body.table;
 		let hdfsTargetDir = req.body.hdfstargetdir;
+		let mode = req.body.mode;
+		let startDateTime = req.body.startDateTime;
+		let freqInMinutes = req.body.freqInMinutes;
+		let modifiedColumnName = req.body.modifiedColumnName;
+
 		let sqoopJobName = dbType + "_" + database + "_" + dbTable;
 		let connectionString;
 		if(dbType.toLowerCase() === config.mySQL){
@@ -34,10 +39,13 @@ module.exports = function (app, express) {
 		
 		// Sqoop Job Delete Command Preparation
 		let sqoop_job_delete = "sqoop job --delete "+sqoopJobName+" --meta-connect jdbc:hsqldb:hsql://"+config.sqoopMetaStoreHost+":"+config.sqoopMetaStorePort+"/sqoop";
-		
+		let sqoop_job_create;	
 		//Sqoop Job Creation Command
-		let sqoop_job_create = "sqoop job --create "+sqoopJobName+" --meta-connect jdbc:hsqldb:hsql://"+config.sqoopMetaStoreHost+":"+config.sqoopMetaStorePort+"/sqoop -- import --connect "+connectionString+" --username "+username+" --password "+password+" --table "+dbTable+" --m 1 --target-dir "+hdfsTargetDir+" --append";
-
+		if(mode === 'once'){
+			sqoop_job_create = "sqoop job --create "+sqoopJobName+" --meta-connect jdbc:hsqldb:hsql://"+config.sqoopMetaStoreHost+":"+config.sqoopMetaStorePort+"/sqoop -- import --connect "+connectionString+" --username "+username+" --password "+password+" --table "+dbTable+" --m 1 --target-dir "+hdfsTargetDir+sqoopJobName+" --append";
+		} else if (mode === 'incremental'){
+                        sqoop_job_create = "sqoop job --create "+sqoopJobName+" --meta-connect jdbc:hsqldb:hsql://"+config.sqoopMetaStoreHost+":"+config.sqoopMetaStorePort+"/sqoop -- import --connect "+connectionString+" --username "+username+" --password "+password+" --table "+dbTable+" --m 1 --incremental lastmodified --check-column "+modifiedColumnName+" --target-dir "+hdfsTargetDir+sqoopJobName+" --append";
+		}
 		let sjd = exec(sqoop_job_delete, function (error, stdout, stderr) {
 			if(error !== config.nullValue){
 				console.log("error occured : " + error);
@@ -52,13 +60,18 @@ module.exports = function (app, express) {
 						let hpc = exec(hdfs_path_create, function (error, stdout, stderr) {
 							if(error === config.nullValue){
 
-								let namenode,jobtracker,libpath,coordinatorpath,finalData;
+								let namenode,jobtracker,libpath,coordinatorpath,finalData,workflowpath;
 								if(config.distribution.toLowerCase() === "mapr"){
 									namenode = "nameNode=maprfs://"+config.nameNodeHost+":"+config.nameNodePort+"\n";
 									jobtracker = "jobTracker="+config.jobTrackerHost+":"+config.jobTrackerPort+"\n";
 									libpath = "oozie.use.system.libpath=true"+"\n";
-									coordinatorpath = "oozie.coord.application.path="+config.hadoopBasePath+sqoopJobName+"/coordinator.xml";
-									finalData = namenode + jobtracker + libpath + coordinatorpath;	
+									if (mode === 'once'){
+										workflowpath = "oozie.wf.application.path="+config.hadoopBasePath+sqoopJobName+"/workflow.xml";
+										finalData = namenode + jobtracker + libpath + workflowpath; 
+									} else if (mode === 'incremental'){
+										coordinatorpath = "oozie.coord.application.path="+config.hadoopBasePath+sqoopJobName+"/coordinator.xml";
+										finalData = namenode + jobtracker + libpath + coordinatorpath;
+									}
 								};
 
 								let dir = config.localBasePath+sqoopJobName;
@@ -71,14 +84,22 @@ module.exports = function (app, express) {
 									if (err) throw err;
 								    	console.log("It's saved!");
 									let workflowXml = common.generateWorkFlowXML(config.sqoopMetaStoreHost,config.sqoopMetaStorePort,sqoopJobName,password);
-									let coordinatorXml = common.generateCoordinatorXML(config.hadoopBasePath,sqoopJobName);
+									let coordinatorXml;
+									if (mode === 'incremental') {		
+										coordinatorXml = common.generateCoordinatorXML(config.hadoopBasePath,sqoopJobName,startDateTime,freqInMinutes);
+									}
 									fs.writeFile(dir+"/workflow.xml", workflowXml, { flag: 'wx' }, function (err) {
 										if (err) throw err;
-										fs.writeFile(dir+"/coordinator.xml", coordinatorXml, { flag: 'wx' }, function (err) {
-											if (err) throw err;
+										if (mode === 'incremental'){
+											fs.writeFile(dir+"/coordinator.xml", coordinatorXml, { flag: 'wx' }, function (err) {
+												if (err) throw err;
+												common.moveFileToHadoop(sqoopJobName);
+												res.json({"message":"Incremental Job Scheduled Successfully!!","statusCode":"200"});
+											});
+										} else {
 											common.moveFileToHadoop(sqoopJobName);
-											res.json({"message":"Files generate successfully","statusCode":"200"});
-										});	
+											res.json({"message":"Once Job Scheduled Successfully!!","statusCode":"200"});
+										}	
 									});
 								});
 							} else {
