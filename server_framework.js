@@ -11,6 +11,7 @@ app.use(cors());
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 app.use(morgan('dev'));
+app.use(express.static('public'));
 
 var mysqlapi = require('./app/routes/connect')(app, express);
 //var mssqlapi = require('./app/routes/mssqlconnect')(app, express);

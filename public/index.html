@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Page Title</title>
+</head>
+<script>
+function CheckValue() {
+	var dbType = document.getElementById('dbtype').value;
+	var hostname = document.getElementById('hostname').value;
+	var portno = document.getElementById('port').value;
+	var dbusername = document.getElementById('username').value;
+	var dbpassword = document.getElementById('password').value;
+	var db = document.getElementById('database').value;
+	var db_table = document.getElementById('table').value;
+	var hdfsTargetDir = document.getElementById('hdfstargetdir').value;
+	var runMode = document.getElementById('mode').value;
+	var runStartDateTime = document.getElementById('startDateTime').value;
+	var runFreqInMinutes = document.getElementById('frequencyInMinutes').value;
+	var runModifiedColumnName = document.getElementById('modifiedColumnName').value;
+	
+	var xmlhttp = new XMLHttpRequest();   // new HttpRequest instance 
+	xmlhttp.open("POST", "http://172.16.243.118:3000/bigdataframework/api/createsqoopjob");
+	xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+	xmlhttp.send(JSON.stringify({ type:dbType,host:hostname,port:portno,username:dbusername,password:dbpassword,database:db,table:db_table,hdfstargetdir:hdfsTargetDir,mode:runMode,startDateTime:runStartDateTime,freqInMinutes:runFreqInMinutes,modifiedColumnName:runModifiedColumnName}));
+}
+</script> 
+<body>
+<h1><center> Big Data Framework</center> </h1>
+<form>
+<table>
+<tr>
+<td width=600>
+  <h3>Database Details</h3>
+  Database Type:<br>
+<select id="dbtype">
+  <option value="mysql">MySQL</option>
+  <option value="mssql">MS SQL Server</option>
+  <option value="oracle">Oracle</option>
+  <option value="pgsql">Post Gre SQL</option>
+</select>  
+  <!--<input type="text" name="dbtype">--><br>
+  Hostname:<br>
+  <input type="text" id="hostname"><br>
+  Port:<br>
+  <input type="text" id="port"><br>
+  Username:<br>
+  <input type="text" id="username"><br>
+  Password:<br>
+  <input type="text" id="password"><br>
+  Database:<br>
+  <input type="text" id="database"><br>
+  Table:<br>
+  <input type="text" id="table"><br>
+</td>
+<td width=600 valign="top">
+ <h3>HDFS Details</h3>
+  HDFS Target Directory:<br>
+  <input type="text" id="hdfstargetdir"><br>
+</td width=600>
+<td valign="top">
+  <h3>Scheduler Details</h3>
+  Execution Mode:<br>
+<select id="mode">
+  <option value="once">Once</option>
+  <option value="incremental">Incremental</option>
+</select><br>
+  Start Date Time:<br>
+  <input type="text" id="startDateTime"><br>
+  Ferquency In Minutes:<br>
+  <input type="text" id="frequencyInMinutes"><br>
+  Modified Column Name:<br>
+  <input type="text" id="modifiedColumnName"><br>
+  </td>
+</tr>
+  </table>
+  </form>
+<center><input type="submit" value="SubmitJob" onclick="CheckValue()"></center>
+</body>
+</html>
