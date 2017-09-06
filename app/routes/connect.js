@@ -94,10 +94,12 @@ module.exports = function (app, express) {
 											fs.writeFile(dir+"/coordinator.xml", coordinatorXml, { flag: 'wx' }, function (err) {
 												if (err) throw err;
 												common.moveFileToHadoop(sqoopJobName);
+												common.submitOozieJob(sqoopJobName);
 												res.json({"message":"Incremental Job Scheduled Successfully!!","statusCode":"200"});
 											});
 										} else {
 											common.moveFileToHadoop(sqoopJobName);
+											common.submitOozieJob(sqoopJobName);
 											res.json({"message":"Once Job Scheduled Successfully!!","statusCode":"200"});
 										}	
 									});

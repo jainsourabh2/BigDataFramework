@@ -64,6 +64,11 @@ var common = {};
 		let removeStatus = execSync(removeLocalFiles);	
 	}
 
+	common.submitOozieJob = function(sqoopJobName){
+		let oozieJobStmt = "/opt/mapr/oozie/oozie-4.3.0/bin/oozie job -oozie http://172.16.243.118:11000/oozie -config "+config.localBasePath+sqoopJobName+"/job.properties -run"
+		let runStatus = execSync(oozieJobStmt);	
+	}
+
 
 
 }(common));
